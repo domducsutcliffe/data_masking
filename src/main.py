@@ -1,3 +1,6 @@
-def json_checker(*args):
-    if not args:
-        return 'Please add a JSON argument'
+from typeguard import typechecked
+from typing import Any
+
+@typechecked
+def json_checker(obfuscation_config: dict):
+    return 0
