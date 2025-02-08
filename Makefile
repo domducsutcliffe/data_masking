@@ -1,3 +1,5 @@
+export PYTHONPATH := $(shell pwd)
+
 .DEFAULT_GOAL := run
 
 PYTHON = ./venv/bin/python3
