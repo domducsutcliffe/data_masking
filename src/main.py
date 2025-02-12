@@ -26,13 +26,17 @@ def json_checker(obfuscation_config: str) -> bool:
     return True
 
 def load_df(s3_uri: str):
-    parsed = urlparse(s3_uri)
-    bucket = parsed.netloc           
-    key = parsed.path.lstrip('/')    
+    bucket, key = parse_s3_uri(s3_uri)    
     s3 = boto3.client('s3')
     response = s3.get_object(Bucket=bucket, Key=key)
     df = pd.read_csv(response['Body'])
     return df
+
+def parse_s3_uri(s3_uri):
+    parsed = urlparse(s3_uri)
+    bucket = parsed.netloc           
+    key = parsed.path.lstrip('/')
+    return bucket,key
 
 def obfuscate(pii_fields, df):
     for field in pii_fields:
@@ -42,9 +46,7 @@ def obfuscate(pii_fields, df):
 def upload(df, s3_uri: str):
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
-    parsed = urlparse(s3_uri)
-    bucket = parsed.netloc           
-    key = parsed.path.lstrip('/')    
+    bucket, key = parse_s3_uri(s3_uri)    
     s3 = boto3.client('s3')
     s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())    
 
