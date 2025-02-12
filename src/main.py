@@ -54,10 +54,12 @@ def load_config_from_json():
     parser = argparse.ArgumentParser(
         description="Obfuscate PII fields in a file using JSON config"
     )
-    parser.add_argument('config', help="Path to JSON config file")
+    parser.add_argument(
+        'config', 
+        help='JSON config string in the format: {"file_to_obfuscate": "s3://your_bucket/path/file.csv", "pii_fields": ["name", "email_address"]}'
+    )
     args = parser.parse_args()
-    with open(args.config, 'r') as f:
-        config = json.load(f)
+    config = json.loads(args.config)
     return config
 
 def main():
