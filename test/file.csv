@@ -1,4 +1,4 @@
-name,email,DOB
+name,email_address,DOB
 Alice Brown,alice.brown@example.com,1985-06-14
 James Smith,james.smith@example.com,1978-11-02
 Clara Johnson,clara.johnson@example.com,1990-03-27
