@@ -1,3 +1,4 @@
+import argparse
 import boto3
 import io
 import json
@@ -29,31 +30,38 @@ def load_df(s3_uri: str):
     bucket = parsed.netloc           
     key = parsed.path.lstrip('/')    
     s3 = boto3.client('s3')
+    print(bucket)
     response = s3.get_object(Bucket=bucket, Key=key)
     df = pd.read_csv(response['Body'])
     return df
 
-def obfisicate(pii_fields, df):
+def obfuscate(pii_fields, df):
     fields = pii_fields
     for field in fields:
         df[field] = '*****'
     return df
 
-def upload(df):
+def upload(df, s3_uri):
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
     s3 = boto3.client('s3')
-    s3.put_object(Bucket='csv-test-11022025', Key='file.csv', Body=csv_buffer.getvalue())    
+    parsed = urlparse(s3_uri)
+    bucket = parsed.netloc           
+    key = parsed.path.lstrip('/')    
+    s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())    
 
     
 def main():
-    obfuscation_config = {
-                            "file_to_obfuscate": "s3://csv-test-11022025/file.csv",
-                            "pii_fields": ["name", "email_address", "DOB"]
-                        }
-    df = load_df(obfuscation_config['file_to_obfuscate'])
-    upload(obfisicate(obfuscation_config['pii_fields'], df))
-    return 0
+    parser = argparse.ArgumentParser(description="Obfuscate PII fields in a file using JSON config")
+    parser.add_argument('config', help="Path to JSON config file")
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as f:
+        config = json.load(f)
+
+    df = load_df(config["file_to_obfuscate"])
+    upload(obfuscate(config["pii_fields"], df), config["file_to_obfuscate"])
+
     
 if __name__ == '__main__':
     main()

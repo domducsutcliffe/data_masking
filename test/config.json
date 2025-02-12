@@ -1,0 +1,4 @@
+{
+    "file_to_obfuscate": "s3://csv-test-11022025/file.csv",
+    "pii_fields": ["name", "email_address"]
+  }
