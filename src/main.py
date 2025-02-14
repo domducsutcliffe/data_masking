@@ -25,32 +25,29 @@ def json_checker(obfuscation_config: str) -> bool:
         raise ValueError("Invalid S3 URI")
     return True
 
-def load_df(s3_uri: str):
-    bucket, key = parse_s3_uri(s3_uri)    
-    s3 = boto3.client('s3')
-    response = s3.get_object(Bucket=bucket, Key=key)
-    df = pd.read_csv(response['Body'])
-    return df
-
-def parse_s3_uri(s3_uri):
+def parse_s3_uri(s3_uri: str):
     parsed = urlparse(s3_uri)
     bucket = parsed.netloc           
     key = parsed.path.lstrip('/')
-    return bucket,key
+    return bucket, key
 
-def obfuscate(pii_fields, df):
-    for field in pii_fields:
-        df[field] = '*****'
-    return df
-
-def upload(df, s3_uri: str):
-    csv_buffer = io.StringIO()
-    df.to_csv(csv_buffer, index=False)
+def load_df(s3_uri: str) -> pd.DataFrame:
     bucket, key = parse_s3_uri(s3_uri)    
     s3 = boto3.client('s3')
-    s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())    
+    response = s3.get_object(Bucket=bucket, Key=key)
+    return pd.read_csv(response['Body'])
 
-def load_config_from_json():
+def obfuscate(pii_fields, df: pd.DataFrame) -> pd.DataFrame:
+    for field in pii_fields:
+        df[field] = '***'
+    return df
+
+def get_csv_bytes(df: pd.DataFrame) -> bytes:
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False)
+    return csv_buffer.getvalue().encode('utf-8')
+
+def load_config_from_json() -> dict:
     parser = argparse.ArgumentParser(
         description="Obfuscate PII fields in a file using JSON config"
     )
@@ -59,8 +56,7 @@ def load_config_from_json():
         help='JSON config string in the format: {"file_to_obfuscate": "s3://your_bucket/path/file.csv", "pii_fields": ["name", "email_address"]}'
     )
     args = parser.parse_args()
-    config = json.loads(args.config)
-    return config
+    return json.loads(args.config)
 
 def main():
     config = load_config_from_json()
@@ -68,7 +64,9 @@ def main():
     
     df = load_df(config["file_to_obfuscate"])
     obfuscated_df = obfuscate(config["pii_fields"], df)
-    upload(obfuscated_df, config["file_to_obfuscate"])
+    csv_bytes = get_csv_bytes(obfuscated_df)
+    
+    print(csv_bytes.decode('utf-8'))
 
 if __name__ == '__main__':
     main()
