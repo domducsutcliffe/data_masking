@@ -1,6 +1,7 @@
 import json
+import pandas as pd
 import pytest
-from src.main import json_checker
+from src.main import json_checker, obfuscate
 from typeguard import TypeCheckError
 
 class TestJSON:
@@ -36,4 +37,47 @@ class TestJSON:
         with pytest.raises(ValueError):
             json_checker(http_object)
 
+class Testobfuscate:
+    def test_obfuscate_with_no_pii_fields(self):
+        df = pd.DataFrame({
+            'name': ['Alice', 'Bob'],
+            'age': [25, 30],
+            'email': ['alice@example.com', 'bob@example.com']
+        })
 
+        pii_fields = []
+        obfuscated_df = obfuscate(pii_fields, df.copy())
+
+        assert all(obfuscated_df['name'] == df['name'])
+        assert all(obfuscated_df['email'] == df['email'])
+        assert all(obfuscated_df['age'] == df['age'])
+
+    def test_obfuscate_with_two_pii_fields(self):
+        df = pd.DataFrame({
+            'name': ['Alice', 'Bob'],
+            'age': [25, 30],
+            'email': ['alice@example.com', 'bob@example.com']
+        })
+
+        pii_fields = ['name', 'email']
+        obfuscated_df = obfuscate(pii_fields, df.copy())
+
+        assert all(obfuscated_df['name'] == '***')
+        assert all(obfuscated_df['email'] == '***')
+        assert all(obfuscated_df['age'] == df['age'])
+    
+    def test_obfuscate_with_invalid_pii_fields_only(self):
+        df = pd.DataFrame({
+            'name': ['Alice', 'Bob'],
+            'age': [25, 30],
+            'email': ['alice@example.com', 'bob@example.com']
+        })
+
+        pii_fields = ["foo", "baa"]
+        obfuscated_df = obfuscate(pii_fields, df.copy())
+
+        assert all(obfuscated_df['name'] == df['name'])
+        assert all(obfuscated_df['email'] == df['email'])
+        assert all(obfuscated_df['age'] == df['age'])
+        assert 'foo' not in obfuscated_df.columns
+        assert 'bar' not in obfuscated_df.columns

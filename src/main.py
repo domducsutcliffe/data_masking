@@ -1,5 +1,6 @@
 import argparse
 import boto3
+from botocore.exceptions import ClientError
 import io
 import json
 import pandas as pd
@@ -31,15 +32,15 @@ def parse_s3_uri(s3_uri: str):
     key = parsed.path.lstrip('/')
     return bucket, key
 
-def load_df(s3_uri: str) -> pd.DataFrame:
-    bucket, key = parse_s3_uri(s3_uri)    
-    s3 = boto3.client('s3')
+def load_df(s3, s3_uri: str) -> pd.DataFrame:
+    bucket, key = parse_s3_uri(s3_uri)
     response = s3.get_object(Bucket=bucket, Key=key)
     return pd.read_csv(response['Body'])
 
 def obfuscate(pii_fields, df: pd.DataFrame) -> pd.DataFrame:
     for field in pii_fields:
-        df[field] = '***'
+        if field in df.columns:
+            df[field] = "***"
     return df
 
 def get_csv_bytes(df: pd.DataFrame) -> bytes:
@@ -61,11 +62,10 @@ def load_config_from_json() -> dict:
 def main():
     config = load_config_from_json()
     json_checker(json.dumps(config))
-    
-    df = load_df(config["file_to_obfuscate"])
+    s3 = boto3.client('s3')
+    df = load_df(s3, config["file_to_obfuscate"])    
     obfuscated_df = obfuscate(config["pii_fields"], df)
     csv_bytes = get_csv_bytes(obfuscated_df)
-    
     print(csv_bytes.decode('utf-8'))
 
 if __name__ == '__main__':
