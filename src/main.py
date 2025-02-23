@@ -3,9 +3,14 @@ import boto3
 from botocore.exceptions import ClientError
 import io
 import json
+import logging
 import pandas as pd
 from typeguard import typechecked
 from urllib.parse import urlparse
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def is_valid_s3_uri(uri: str) -> bool:
     return bool((parsed := urlparse(uri)).scheme == 's3' 
@@ -32,15 +37,35 @@ def parse_s3_uri(s3_uri: str):
     key = parsed.path.lstrip('/')
     return bucket, key
 
+import pandas as pd
+from botocore.exceptions import ClientError
+
 def load_df(s3, s3_uri: str) -> pd.DataFrame:
     bucket, key = parse_s3_uri(s3_uri)
-    response = s3.get_object(Bucket=bucket, Key=key)
-    return pd.read_csv(response['Body'])
+    try:
+        response = s3.get_object(Bucket=bucket, Key=key)
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code == "NoSuchBucket":
+            raise ValueError("Invalid bucket: bucket does not exist") from e
+        elif error_code == "NoSuchKey":
+            raise ValueError("Invalid key: key does not exist") from e
+        raise ValueError(f"Failed to retrieve object: {error_code}") from e
+    try:
+        return pd.read_csv(response['Body'])
+    except Exception as e:
+        raise ValueError("Failed to parse CSV from S3 object") from e
 
 def obfuscate(pii_fields, df: pd.DataFrame) -> pd.DataFrame:
+    fields_obfuscated = 0
+    record_count = len(df)
     for field in pii_fields:
         if field in df.columns:
+            fields_obfuscated += 1
             df[field] = "***"
+        else:
+            logger.warning(f'Field "{field}" not provided')
+    logger.info(f'{fields_obfuscated} fields obfuscated in {record_count} records')
     return df
 
 def get_csv_bytes(df: pd.DataFrame) -> bytes:
