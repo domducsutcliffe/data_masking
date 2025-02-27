@@ -12,11 +12,16 @@ from urllib.parse import urlparse
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def is_valid_s3_uri(uri: str) -> bool:
-    return bool((parsed := urlparse(uri)).scheme == 's3' 
-                and parsed.netloc 
-                and parsed.path 
-                and parsed.path.endswith('.csv'))
+def load_config_from_json() -> dict:
+    parser = argparse.ArgumentParser(
+        description="Obfuscate PII fields in a file using JSON config"
+    )
+    parser.add_argument(
+        'config', 
+        help='JSON config string in the format: {"file_to_obfuscate": "s3://your_bucket/path/file.csv", "pii_fields": ["name", "email_address"]}'
+    )
+    args = parser.parse_args()
+    return json.loads(args.config)
 
 @typechecked
 def json_checker(obfuscation_config: str) -> bool:
@@ -30,6 +35,13 @@ def json_checker(obfuscation_config: str) -> bool:
     if not is_valid_s3_uri(config['file_to_obfuscate']):
         raise ValueError("Invalid S3 URI")
     return True
+
+def is_valid_s3_uri(uri: str) -> bool:
+    return bool((parsed := urlparse(uri)).scheme == 's3' 
+                and parsed.netloc 
+                and parsed.path 
+                and parsed.path.endswith('.csv'))
+
 
 def parse_s3_uri(s3_uri: str):
     parsed = urlparse(s3_uri)
@@ -73,16 +85,6 @@ def get_csv_bytes(df: pd.DataFrame) -> bytes:
     df.to_csv(csv_buffer, index=False)
     return csv_buffer.getvalue().encode('utf-8')
 
-def load_config_from_json() -> dict:
-    parser = argparse.ArgumentParser(
-        description="Obfuscate PII fields in a file using JSON config"
-    )
-    parser.add_argument(
-        'config', 
-        help='JSON config string in the format: {"file_to_obfuscate": "s3://your_bucket/path/file.csv", "pii_fields": ["name", "email_address"]}'
-    )
-    args = parser.parse_args()
-    return json.loads(args.config)
 
 def main():
     config = load_config_from_json()

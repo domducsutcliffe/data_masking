@@ -167,3 +167,24 @@ class TestLoadConfigFromJson:
         expected = json.loads(test_json)
         config = load_config_from_json()
         assert config == expected
+
+def generate_large_csv(size_mb=1):
+    target_size = size_mb * 1024 * 1024  
+    csv_data = "col1,col2,col3\n"
+
+    i = 0
+    while len(csv_data.encode('utf-8')) < target_size:
+        csv_data += f"{i},text{i},data{i}\n"
+        i += 1
+    
+    return csv_data
+
+def test_large_file_speed(benchmark):
+    csv_content = generate_large_csv()
+    fake_s3 = FakeS3({'csv_content': csv_content})
+    def process():
+        df = load_df(fake_s3, "s3://bucket/large.csv")
+        obfuscated = obfuscate(["col2"], df)
+        return get_csv_bytes(obfuscated)
+    result = benchmark(process)
+    assert result is not None  # ensures process completed
