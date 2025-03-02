@@ -43,12 +43,6 @@ def is_valid_s3_uri_and_file_type(uri: str) -> bool:
                 and parsed.path.endswith('.csv'))
 
 
-def parse_s3_uri(s3_uri: str) -> tuple[str, str]:
-    parsed = urlparse(s3_uri)
-    bucket = parsed.netloc           
-    key = parsed.path.lstrip('/')
-    return bucket, key
-
 
 def load_df(s3, s3_uri: str) -> pd.DataFrame:
     bucket, key = parse_s3_uri(s3_uri)
@@ -65,6 +59,12 @@ def load_df(s3, s3_uri: str) -> pd.DataFrame:
         return pd.read_csv(response['Body'])
     except Exception as e:
         raise ValueError("Failed to parse CSV from S3 object") from e
+
+def parse_s3_uri(s3_uri: str) -> tuple[str, str]:
+    parsed = urlparse(s3_uri)
+    bucket = parsed.netloc           
+    key = parsed.path.lstrip('/')
+    return bucket, key
 
 def obfuscate(pii_fields, df: pd.DataFrame) -> pd.DataFrame:
     fields_obfuscated = 0
