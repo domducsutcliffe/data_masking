@@ -32,25 +32,23 @@ def json_checker(obfuscation_config: str) -> bool:
     keys = list(config.keys())
     if not keys[0] == 'file_to_obfuscate' or not keys[1] == 'pii_fields':
         raise ValueError("JSON keys are invalid.")
-    if not is_valid_s3_uri(config['file_to_obfuscate']):
+    if not is_valid_s3_uri_and_file_type(config['file_to_obfuscate']):
         raise ValueError("Invalid S3 URI")
     return True
 
-def is_valid_s3_uri(uri: str) -> bool:
+def is_valid_s3_uri_and_file_type(uri: str) -> bool:
     return bool((parsed := urlparse(uri)).scheme == 's3' 
                 and parsed.netloc 
                 and parsed.path 
                 and parsed.path.endswith('.csv'))
 
 
-def parse_s3_uri(s3_uri: str):
+def parse_s3_uri(s3_uri: str) -> tuple[str, str]:
     parsed = urlparse(s3_uri)
     bucket = parsed.netloc           
     key = parsed.path.lstrip('/')
     return bucket, key
 
-import pandas as pd
-from botocore.exceptions import ClientError
 
 def load_df(s3, s3_uri: str) -> pd.DataFrame:
     bucket, key = parse_s3_uri(s3_uri)

@@ -7,7 +7,7 @@ import pandas as pd
 from botocore.exceptions import ClientError
 from typeguard import TypeCheckError
 from src.main import (
-    is_valid_s3_uri,
+    is_valid_s3_uri_and_file_type,
     json_checker,
     parse_s3_uri,
     load_config_from_json,
@@ -28,23 +28,23 @@ class FakeS3:
         csv_content = self.behaviour.get('csv_content', "col1,col2\n1,2\n3,4")
         return {'Body': io.StringIO(csv_content)}
 
-# Tests for is_valid_s3_uri.
+# Tests for is_valid_s3_uri_and_file_type.
 class TestIsValidS3Uri:
     def test_valid_uri(self):
         uri = "s3://bucket/path/file.csv"
-        assert is_valid_s3_uri(uri) is True
+        assert is_valid_s3_uri_and_file_type(uri) is True
 
     def test_invalid_scheme(self):
         uri = "http://bucket/path/file.csv"
-        assert is_valid_s3_uri(uri) is False
+        assert is_valid_s3_uri_and_file_type(uri) is False
     
     def test_invalid_filetype(self):
         uri = "http://bucket/path/file.html"
-        assert is_valid_s3_uri(uri) is False
+        assert is_valid_s3_uri_and_file_type(uri) is False
 
     def test_missing_path(self):
         uri = "s3://bucket/"
-        assert is_valid_s3_uri(uri) is False
+        assert is_valid_s3_uri_and_file_type(uri) is False
 
 # Tests for parse_s3_uri.
 class TestParseS3Uri:
